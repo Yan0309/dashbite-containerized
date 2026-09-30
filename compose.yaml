@@ -39,6 +39,7 @@ services:
 
   dashboard:
     <<: *pipeline-service
+    stop_signal: SIGINT
     command:
       - streamlit
       - run

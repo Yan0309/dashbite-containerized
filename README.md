@@ -105,9 +105,19 @@ Run the complete suite in the shared image with the opt-in test profile:
 docker compose --profile test run --rm tests
 ```
 
-`DATA_ROOT` identifies the data directory itself. Compose sets it to `/app/data`; local runs default to the repository's `data/` directory. An explicit `base` argument to the Python path helpers retains its project-directory meaning and takes precedence over `DATA_ROOT`.
+`DATA_ROOT` identifies the data directory itself. Compose sets it to `/app/data`; local runs default to the repository's `data/` directory. An explicit `base` argument to the Python path helpers retains its project-directory meaning and takes precedence over `DATA_ROOT`. An empty `DATA_ROOT` value is treated as unset, which is safer than resolving to an empty path; relative values are interpreted relative to the process working directory.
 
 Whole-file outputs are written to a same-directory `.tmp` file and published with `os.replace`. If a worker is SIGKILLed mid-write, a `<name>.tmp` file may remain; consumers do not glob these files, and a later write to the same destination overwrites it. The append-only `data/quality/batch_quality.csv` log is deliberately unchanged; appending to it is not atomic.
+
+### Known limitations
+- The pipeline keeps raw, feature, prediction, checkpoint, and quality files on disk indefinitely. There is no retention policy or cleanup step, so long-running deployments will consume more disk over time.
+- The checkpoint naming convention preserves the existing project contract: the filename includes a timestamp in the second field, and infer and the dashboard depend on that naming pattern. Multiple retrains within the same second are intentionally left as a documented limitation rather than a behavior change.
+- Startup race: if `docker compose stop` is issued during the first seconds after container start, `train` and `infer` can still be SIGKILLed (exit 137) because their `SIGTERM` handlers are installed only after large imports (`sklearn`, `joblib`). No pipeline files are written during import, so there is no data-corruption risk. The dashboard exits via `SIGINT` and reports `130` if interrupted during startup; once warm, it exits `0` on `SIGINT` shutdown.
+
+### Stop behavior
+Warm stop after startup settles: `docker compose stop -t 10` exits in about 1–4 s total (1.4 s and 4.1 s in two runs; the dashboard accounts for most of the variation) with all five containers exiting `0`.
+
+Startup race: if shutdown happens within the first few seconds after `docker compose up`, `train` and `infer` can still be SIGKILLed (exit 137) because their handlers are attached only after the expensive import phase. No writes occur before the handlers are installed, so this is harmless from a data-integrity standpoint. The dashboard exits via `SIGINT`; once warm it exits `0`, and during startup an interrupt can appear as exit `130` (`128 + 2`).
 
 ## Manual Smoke Test
 
