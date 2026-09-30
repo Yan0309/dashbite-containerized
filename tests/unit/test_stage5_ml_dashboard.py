@@ -5,6 +5,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from pipeline.dashboard.app import load_features
+from pipeline.paths import features_dir
 from pipeline.dashboard.ml_metrics import (
     late_flag_rate_over_time,
     sample_volume,
@@ -79,3 +81,15 @@ def test_late_flag_rate_over_time_by_minute():
     assert rates.iloc[1]["late_flag_rate"] == pytest.approx(1.0)  # c=1, d=1
     assert late_flag_rate_over_time(pd.DataFrame(), features).empty
     assert late_flag_rate_over_time(preds, pd.DataFrame()).empty
+
+
+@pytest.mark.unit
+def test_dashboard_feature_loader_uses_data_root_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_ROOT", str(tmp_path / "configured-data"))
+    directory = features_dir()
+    directory.mkdir(parents=True)
+    pd.DataFrame({"order_id": ["configured-root"]}).to_csv(
+        directory / "features_env.csv", index=False
+    )
+
+    assert load_features()["order_id"].tolist() == ["configured-root"]

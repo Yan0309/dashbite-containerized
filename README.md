@@ -2,7 +2,7 @@
 
 Teaching demo of a modular data + ML application. **DashBite** predicts whether a food-delivery order will be **late**.
 
-No containers. Stages are separate Python modules that share folders under `data/`. Training and inference are **independent processes** coupled only by timestamped checkpoints in `data/models/`. Inference always uses the **newest** checkpoint.
+Stages are separate Python modules that share folders under `data/`. Run them locally with the Makefile or together as a Docker Compose stack. Training and inference are **independent processes** coupled only by timestamped checkpoints in `data/models/`. Inference always uses the **newest** checkpoint.
 
 ## Stages
 
@@ -86,6 +86,34 @@ make stop
 Logs: `.logs/*.log` · PIDs: `.logs/pids/` · Poll default: `POLL_INTERVAL_SECONDS=15`
 
 Foreground single stages (one terminal each): `make simulator`, `make preprocess`, `make train`, `make infer`, `make dashboard`.
+
+## Docker Compose
+
+Start the single-replica pipeline and Model Pulse dashboard:
+
+```bash
+docker compose up --build -d
+docker compose ps
+docker compose logs -f simulator preprocess train infer dashboard
+```
+
+Open http://localhost:8501 for Model Pulse. The services share a named volume mounted at `/app/data`; its files survive `docker compose down`. Remove the volume explicitly with `docker compose down -v`.
+
+Run the complete suite in the shared image with the opt-in test profile:
+
+```bash
+docker compose --profile test run --rm tests
+```
+
+`DATA_ROOT` identifies the data directory itself. Compose sets it to `/app/data`; local runs default to the repository's `data/` directory. An explicit `base` argument to the Python path helpers retains its project-directory meaning and takes precedence over `DATA_ROOT`.
+
+Whole-file outputs are written to a same-directory `.tmp` file and published with `os.replace`. If a worker is SIGKILLed mid-write, a `<name>.tmp` file may remain; consumers do not glob these files, and a later write to the same destination overwrites it. The append-only `data/quality/batch_quality.csv` log is deliberately unchanged; appending to it is not atomic.
+
+## Containerization Sources
+
+The repository's `docs/docker-k8s-guide.md` supplies the shared-image approach, one Compose service per stage, and the `DATA_ROOT` configuration concept.
+
+Project additions for this local stack include non-root runtime services, a shared named volume, a single-replica policy, an opt-in Compose test profile, atomic publication for whole-file outputs, and event-based SIGTERM/SIGINT shutdown for the four workers. The append-only quality log remains outside the atomic-write guarantee. Prompt Board and Kubernetes are not part of this Compose stack.
 
 ## Config (environment)
 

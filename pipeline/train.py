@@ -7,7 +7,6 @@ Does not import or call inference.
 from __future__ import annotations
 
 import json
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,8 +16,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
+from pipeline import atomic
 from pipeline.config import Config, load_config
 from pipeline.paths import ensure_data_dirs, features_dir, models_dir
+from pipeline.shutdown import install_shutdown_handlers
 
 STATE_FILENAME = "train_state.json"
 FEATURE_COLUMNS = ["distance_km", "prep_minutes"]
@@ -37,7 +38,10 @@ def load_state(base: Path | None = None) -> dict:
 
 def save_state(state: dict, base: Path | None = None) -> None:
     ensure_data_dirs(base)
-    _state_path(base).write_text(json.dumps(state, indent=2))
+    path = _state_path(base)
+    atomic.atomic_write(
+        path, lambda temporary: temporary.write_text(json.dumps(state, indent=2))
+    )
 
 
 def load_all_features(base: Path | None = None) -> pd.DataFrame:
@@ -105,12 +109,19 @@ def write_checkpoint(
     stamp = stamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     ckpt_path = models_dir(base) / f"checkpoint_{stamp}.joblib"
     metrics_path = models_dir(base) / f"metrics_{stamp}.json"
-    joblib.dump(
-        {"model": model, "feature_columns": FEATURE_COLUMNS, "checkpoint_id": stamp},
-        ckpt_path,
+    bundle = {
+        "model": model,
+        "feature_columns": FEATURE_COLUMNS,
+        "checkpoint_id": stamp,
+    }
+    atomic.atomic_write(
+        ckpt_path, lambda temporary: joblib.dump(bundle, temporary)
     )
     payload = {**metrics, "checkpoint_id": stamp, "feature_columns": FEATURE_COLUMNS}
-    metrics_path.write_text(json.dumps(payload, indent=2))
+    atomic.atomic_write(
+        metrics_path,
+        lambda temporary: temporary.write_text(json.dumps(payload, indent=2)),
+    )
     return ckpt_path
 
 
@@ -145,10 +156,13 @@ def maybe_train(cfg: Config | None = None, base: Path | None = None) -> Path | N
 def run_loop(cfg: Config | None = None, base: Path | None = None) -> None:
     cfg = cfg or load_config()
     ensure_data_dirs(base)
+    stop_event = install_shutdown_handlers()
     print("DashBite training started (independent write path)")
-    while True:
+    while not stop_event.is_set():
         maybe_train(cfg=cfg, base=base)
-        time.sleep(cfg.poll_interval_seconds)
+        if stop_event.wait(cfg.poll_interval_seconds):
+            break
+    print("DashBite training shutting down")
 
 
 def main() -> None:

@@ -20,7 +20,7 @@ from pipeline.dashboard.quality_metrics import (
     field_failure_totals,
     throughput_summary,
 )
-from pipeline.paths import PROJECT_ROOT, features_dir, predictions_dir, quality_dir
+from pipeline.paths import features_dir, predictions_dir, quality_dir
 from pipeline.preprocess import QUALITY_LOG
 
 ACCENT = "#5B9BD5"
@@ -148,10 +148,9 @@ def main() -> None:
     st.title("DashBite")
     auto = st.sidebar.checkbox("Auto-refresh (15s)", value=True)
 
-    base = PROJECT_ROOT
-    features = load_features(base)
-    predictions = load_predictions(base)
-    quality = load_quality_log(base)
+    features = load_features()
+    predictions = load_predictions()
+    quality = load_quality_log()
     throughput = throughput_summary(quality)
     failures = field_failure_totals(quality)
     summary = score_summary(predictions)

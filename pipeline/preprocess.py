@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
+from pipeline import atomic
 from pipeline.config import Config, load_config
 from pipeline.paths import ensure_data_dirs, features_dir, quality_dir, raw_dir
+from pipeline.shutdown import install_shutdown_handlers
 
 REQUIRED_COLUMNS = [
     "order_id",
@@ -147,7 +148,9 @@ def process_new_raw_files(base: Path | None = None) -> list[Path]:
         quality["batch_file"] = raw_path.name
         quality["processed_at"] = datetime.now(timezone.utc).isoformat()
         out_path = fdir / f"features_{raw_path.stem}.csv"
-        features.to_csv(out_path, index=False)
+        atomic.atomic_write(
+            out_path, lambda temporary: features.to_csv(temporary, index=False)
+        )
         _append_quality_log(quality, base=base)
         marker.write_text(raw_path.name)
         written.append(out_path)
@@ -162,10 +165,13 @@ def process_new_raw_files(base: Path | None = None) -> list[Path]:
 def run_loop(cfg: Config | None = None, base: Path | None = None) -> None:
     cfg = cfg or load_config()
     ensure_data_dirs(base)
+    stop_event = install_shutdown_handlers()
     print("DashBite preprocess started")
-    while True:
+    while not stop_event.is_set():
         process_new_raw_files(base=base)
-        time.sleep(cfg.poll_interval_seconds)
+        if stop_event.wait(cfg.poll_interval_seconds):
+            break
+    print("DashBite preprocess shutting down")
 
 
 def main() -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,8 +9,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from pipeline import atomic
 from pipeline.config import Config, load_config
 from pipeline.paths import ensure_data_dirs, raw_dir
+from pipeline.shutdown import install_shutdown_handlers
 
 RAW_COLUMNS = [
     "order_id",
@@ -98,7 +99,7 @@ def write_batch(df: pd.DataFrame, dest_dir: Path, tick: int = 0) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     path = dest_dir / f"orders_{stamp}_{tick:04d}.csv"
-    df.to_csv(path, index=False)
+    atomic.atomic_write(path, lambda temporary: df.to_csv(temporary, index=False))
     return path
 
 
@@ -121,12 +122,15 @@ def run_loop(cfg: Config | None = None, base: Path | None = None) -> None:
     """Continuously emit order batches (live-feeling feed)."""
     cfg = cfg or load_config()
     ensure_data_dirs(base)
+    stop_event = install_shutdown_handlers()
     tick = 0
     print("DashBite order feed started")
-    while True:
+    while not stop_event.is_set():
         run_once(cfg=cfg, base=base, tick=tick)
         tick += 1
-        time.sleep(cfg.poll_interval_seconds)
+        if stop_event.wait(cfg.poll_interval_seconds):
+            break
+    print("DashBite order feed shutting down")
 
 
 def main() -> None:
