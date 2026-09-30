@@ -115,7 +115,7 @@ Terminal 2:
 docker compose ps
 docker compose exec -T train python -c "from pathlib import Path; root=Path('/app/data'); print(*(str(p.relative_to(root)) for p in sorted(root.rglob('*')) if p.is_file()), sep='\\n')"
 docker compose port dashboard 8501
-time docker compose stop train infer
+time docker compose stop -t 10 train infer
 docker inspect "$(docker compose ps -aq train)" --format 'train exit={{.State.ExitCode}}'
 docker inspect "$(docker compose ps -aq infer)" --format 'infer exit={{.State.ExitCode}}'
 ```
@@ -124,7 +124,7 @@ docker inspect "$(docker compose ps -aq infer)" --format 'infer exit={{.State.Ex
 - All five long-running services are up, with one container each; the dashboard port maps to host port 8501.
 - Live logs show simulator, preprocess, train, and infer progress without waiting for process exit.
 - The shared volume contains files across `raw/`, `features/`, `models/`, `predictions/`, and `quality/`; the dashboard healthcheck reports healthy.
-- Record the exact `time docker compose stop train infer` duration and both inspect exit codes as the BEFORE-fix evidence. Expected: approximately 10 seconds and exit code 137 for train and infer.
+- Record the exact `time docker compose stop -t 10 train infer` duration and both inspect exit codes as the BEFORE-fix evidence. Expected: ~10s with `-t 10`, exit 137 for train and infer.
 
 #### Stop
 ```sh
@@ -216,7 +216,7 @@ docker compose ps
 docker compose exec -T train python -c "from pathlib import Path; root=Path('/app/data'); print(*(str(p.relative_to(root)) for p in sorted(root.rglob('*')) if p.is_file()), sep='\\n')"
 docker compose exec -T train python -c "from pathlib import Path; stale=sorted(Path('/app/data').rglob('*.tmp')); assert not stale, stale; print('no .tmp files anywhere under /app/data')"
 docker compose exec -T train python -c "from pathlib import Path; Path('/app/data/.persistence-smoke').write_text('named volume survives down and up')"
-time docker compose stop train infer
+time docker compose stop -t 10 train infer
 docker inspect "$(docker compose ps -aq train)" --format 'train exit={{.State.ExitCode}}'
 docker inspect "$(docker compose ps -aq infer)" --format 'infer exit={{.State.ExitCode}}'
 docker compose down

@@ -1,0 +1,10 @@
+.git/
+.hg/
+.svn/
+.venv/
+.logs/
+.pytest_cache/
+data/
+**/__pycache__/
+*.py[cod]
+.DS_Store

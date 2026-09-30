@@ -1,0 +1,73 @@
+name: dashbite
+
+x-image: &image
+  image: dashbite:latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+x-pipeline-service: &pipeline-service
+  <<: *image
+  environment: &pipeline-environment
+    TRAIN_EVERY_N_EVENTS: "50"
+    BATCH_SIZE: "20"
+    POLL_INTERVAL_SECONDS: "15.0"
+    CORRUPT_BATCH_RATE: "0.25"
+    RANDOM_SEED: "42"
+    PYTHONUNBUFFERED: "1"
+  volumes:
+    - dashbite-data:/app/data
+  restart: unless-stopped
+
+services:
+  simulator:
+    <<: *pipeline-service
+    command: ["python", "-m", "pipeline.simulator"]
+
+  preprocess:
+    <<: *pipeline-service
+    command: ["python", "-m", "pipeline.preprocess"]
+
+  train:
+    <<: *pipeline-service
+    command: ["python", "-m", "pipeline.train"]
+
+  infer:
+    <<: *pipeline-service
+    command: ["python", "-m", "pipeline.infer"]
+
+  dashboard:
+    <<: *pipeline-service
+    command:
+      - streamlit
+      - run
+      - pipeline/dashboard/app.py
+      - --server.headless
+      - "true"
+      - --server.address
+      - 0.0.0.0
+      - --server.port
+      - "8501"
+    ports:
+      - "8501:8501"
+    # This endpoint checks server availability; app imports run on browser sessions.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - from urllib.request import urlopen; urlopen('http://127.0.0.1:8501/_stcore/health', timeout=2).read()
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  tests:
+    <<: *image
+    profiles: ["test"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+    command: ["pytest", "-p", "no:cacheprovider"]
+
+volumes:
+  dashbite-data:
