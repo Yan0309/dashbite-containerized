@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>DashBite — Agent Prompt Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e1117;
+      --surface: #1a2421;
+      --hero-a: #0f241f;
+      --hero-b: #1a3a32;
+      --hero-c: #243d28;
+      --border: #2d5a4e;
+      --accent: #3d8f76;
+      --text: #e8f2ee;
+      --muted: #b8c9c2;
+      --primary: #ff4b4b;
+      --code-bg: #0b0f0d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 3rem;
+    }
+    .hero {
+      background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 45%, var(--hero-c) 100%);
+      color: var(--text);
+      padding: 1.75rem;
+      border-radius: 12px;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border);
+    }
+    .hero h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.85rem;
+      letter-spacing: -0.02em;
+    }
+    .hero p { margin: 0; opacity: 0.9; }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .chip {
+      background: rgba(232, 242, 238, 0.12);
+      border: 1px solid rgba(232, 242, 238, 0.25);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+    }
+    .how {
+      background: rgba(61, 143, 118, 0.14);
+      border-left: 4px solid var(--accent);
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.25rem;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.95rem;
+    }
+    .how code {
+      font-family: "IBM Plex Mono", monospace;
+      color: #9fdbc5;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .toolbar label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    details.stage {
+      border: 1px solid rgba(61, 143, 118, 0.35);
+      border-radius: 10px;
+      margin-bottom: 0.75rem;
+      background: transparent;
+      overflow: hidden;
+    }
+    details.stage > summary {
+      cursor: pointer;
+      padding: 0.9rem 1rem;
+      font-weight: 600;
+      list-style: none;
+      background: var(--surface);
+    }
+    details.stage > summary::-webkit-details-marker { display: none; }
+    details.stage > summary::before {
+      content: "▸";
+      display: inline-block;
+      margin-right: 0.55rem;
+      color: var(--accent);
+      transition: transform 0.15s ease;
+    }
+    details.stage[open] > summary::before { transform: rotate(90deg); }
+    .stage-body { padding: 0.75rem 1rem 1.1rem; }
+    .teach {
+      color: var(--muted);
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.75rem;
+    }
+    .tab {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 0.55rem 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .caption {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 0.4rem;
+    }
+    .prompt-wrap {
+      position: relative;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 0.85rem 0.85rem;
+    }
+    .prompt-wrap pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: var(--hero-b);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .copy-btn:hover { background: var(--border); }
+    .copy-btn.copied { background: var(--accent); border-color: var(--accent); }
+    .roles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 800px) {
+      .roles { grid-template-columns: 1fr; }
+    }
+    .role {
+      background: rgba(61, 143, 118, 0.08);
+      border: 1px solid rgba(61, 143, 118, 0.35);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .role strong {
+      display: block;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+      color: var(--accent);
+    }
+    footer {
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .outro {
+      margin-top: 2rem;
+      padding: 1.5rem 1.35rem 1.35rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, #132820 0%, #0f1a17 55%, #161b19 100%);
+    }
+    .outro h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.45rem;
+      letter-spacing: -0.02em;
+    }
+    .outro-flow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin: 0 0 1rem;
+    }
+    .outro p {
+      color: var(--muted);
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+    }
+    .outro .examples {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0 0 1rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+    .outro .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(61, 143, 118, 0.12);
+      padding: 0.7rem 0.9rem;
+      border-radius: 0 8px 8px 0;
+      margin: 0 0 1.25rem;
+      color: var(--text);
+      font-size: 0.92rem;
+    }
+    .outro h3 {
+      margin: 0 0 0.65rem;
+      font-size: 1.05rem;
+    }
+    .outro .takeaway {
+      margin: 1rem 0 0;
+      font-size: 0.95rem;
+      color: var(--text);
+      font-style: italic;
+    }
+    .outro .portable {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .outro .portable a {
+      color: #9fdbc5;
+    }
+    .smoke-reminder {
+      margin-top: 0.85rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      border: 1px dashed rgba(61, 143, 118, 0.55);
+      background: rgba(61, 143, 118, 0.1);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+    .smoke-reminder strong {
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .nav-burger {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1002;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+    .nav-burger span {
+      display: block;
+      width: 1.15rem;
+      height: 2px;
+      background: var(--text);
+      border-radius: 1px;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.nav-open .nav-burger span:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+    }
+    body.nav-open .nav-burger span:nth-child(2) {
+      opacity: 0;
+    }
+    body.nav-open .nav-burger span:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+    }
+    .nav-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    body.nav-open .nav-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .nav-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(20rem, 88vw);
+      height: 100%;
+      z-index: 1001;
+      background: #121a17;
+      border-left: 1px solid var(--border);
+      padding: 4.5rem 1.1rem 1.5rem;
+      transform: translateX(105%);
+      transition: transform 0.22s ease;
+      overflow-y: auto;
+    }
+    body.nav-open .nav-drawer {
+      transform: translateX(0);
+    }
+    .nav-drawer h2 {
+      margin: 0 0 0.85rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .nav-drawer a {
+      display: block;
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 0.35rem;
+      border-radius: 8px;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid transparent;
+      font-size: 0.92rem;
+    }
+    .nav-drawer a:hover,
+    .nav-drawer a:focus-visible {
+      background: rgba(61, 143, 118, 0.14);
+      border-color: rgba(61, 143, 118, 0.35);
+      outline: none;
+    }
+    .nav-drawer a .nav-meta {
+      display: block;
+      margin-top: 0.15rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <button class="nav-burger" type="button" id="nav-burger" aria-label="Open stages menu" aria-expanded="false" aria-controls="nav-drawer">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-backdrop" id="nav-backdrop" hidden></div>
+  <nav class="nav-drawer" id="nav-drawer" aria-label="Stages">
+    <h2>JUMP TO STAGE</h2>
+    <div id="nav-links"></div>
+  </nav>
+  <main>
+    <div class="hero">
+      <h1>DashBite</h1>
+      <p>Agent Prompt Board — Think it through → Build it → Check it as three
+        independent Cursor chats. The repo, a single living <code>docs/plan.md</code>, and tests are the shared source of truth.</p>
+      <div class="chips">
+        <span class="chip">THINK · ARCHITECT</span>
+        <span class="chip">BUILD · IMPLEMENTER</span>
+        <span class="chip">CHECK · REVIEWER</span>
+      </div>
+    </div>
+
+    <div class="how">
+      <strong>How to use in the demo:</strong>
+      Each step is intentionally run in a <em>fresh</em> Cursor chat.
+      Think it through acts like an architect (appends to <code>docs/plan.md</code>,
+      including a <em>Manual Smoke Test</em> — never overwrites earlier stages),
+      Build it like an implementer (reads <code>docs/plan.md</code> first), and
+      Check it like a reviewer. After Build, run the smoke test from the terminal
+      with the class before opening the reviewer chat. Wait for full
+      <code>pytest</code> green before the next stage's architect chat.
+    </div>
+
+    <div class="roles">
+      <div class="role">
+        <strong>ARCHITECT</strong>
+        Fresh chat. Inspect the repo, append this stage to docs/plan.md (design + automated tests + Manual Smoke Test) — don't implement.
+      </div>
+      <div class="role">
+        <strong>IMPLEMENTER</strong>
+        Fresh chat. Read docs/plan.md first, then build. Keep this stage's smoke-test section runnable.
+      </div>
+      <div class="role">
+        <strong>REVIEWER</strong>
+        Fresh chat. Read docs/plan.md, verify code/tests, and confirm this stage's Manual Smoke Test still matches reality.
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <label><input type="checkbox" id="expand-all" checked /> Expand all stages</label>
+    </div>
+
+    <div id="board"></div>
+
+    <section class="outro" id="outro" aria-label="Take the workflow with you">
+      <h2>Take the workflow with you</h2>
+      <p class="outro-flow">ARCHITECT → IMPLEMENTER → REVIEWER</p>
+      <p>
+        The prompts above are intentionally explicit so we can see the workflow during the demo.
+        In a real project, we don't want to rewrite this scaffolding every time.
+      </p>
+      <p>
+        Cursor Skills let us package the workflow once and reuse it across projects.
+      </p>
+      <p>
+        Install the <code>dev-cycle</code> skill, then start three fresh chats for a feature
+        (and run the Manual Smoke Test from <code>docs/plan.md</code> between Implement and Review):
+      </p>
+      <div class="examples">/dev-cycle architect Add caching to the API
+
+/dev-cycle implement Add caching to the API
+
+# then: run the Manual Smoke Test from docs/plan.md with the class
+
+/dev-cycle review Add caching to the API</div>
+      <div class="callout">
+        Each chat starts fresh. The repository, a single <code>docs/plan.md</code> (append-only stages, including Manual Smoke Test),
+        interfaces, and tests provide the shared context between agents.
+      </div>
+      <h3>Create it once</h3>
+      <div class="caption">Paste into Cursor — click Copy</div>
+      <div class="prompt-wrap">
+        <button class="copy-btn" type="button" data-copy="create-skill-prompt">Copy</button>
+        <pre id="create-skill-prompt">Use Cursor&#x27;s /create-skill workflow to create a user-level skill named `dev-cycle` so I can use it across repositories.
+
+The skill should support three roles: architect, implement, and review.
+
+Each role may run in a completely fresh chat, so the skill must never depend on previous conversational context. The repository and a single living `docs/plan.md` should be treated as the shared source of truth.
+
+Workflow reminder the skill should encode:
+Architect (append to docs/plan.md) → Implementer (build) → Manual smoke test from docs/plan.md → Reviewer
+
+Architect:
+- inspect the current repository
+- do not modify implementation files (may create/update `docs/plan.md` only)
+- understand the requested feature / stage
+- propose the smallest clean design
+- identify relevant files/interfaces
+- explain automated test strategy
+- maintain ONE plan file at `docs/plan.md`: create it if missing; otherwise APPEND a new stage/feature section — never overwrite the whole file or delete earlier sections
+- each appended section includes: Goal, Proposed changes, Architecture / boundaries, Automated tests, and a Manual Smoke Test (What we&#x27;re proving / Terminal / Watch for / Stop)
+- Manual Smoke Test must be a live demo from the terminal (visible logs, files on disk, readable outputs) — not pytest
+- stop after updating docs/plan.md — do not implement
+
+Implement:
+- assume the planning conversation is unavailable
+- inspect the repository and reconstruct context yourself
+- read docs/plan.md first (focus on the latest / relevant stage section; earlier sections are context); treat it as the architecture, automated test, and Manual Smoke Test handoff
+- implement the requested behavior using existing patterns
+- keep the change scoped
+- add/update relevant tests
+- run relevant tests and the broader suite when practical
+- never rewrite docs/plan.md from scratch; if the Manual Smoke Test drifted, update only that stage&#x27;s Manual Smoke Test section so it stays runnable
+- summarize what changed and test status
+
+Review:
+- assume another agent implemented the feature
+- read docs/plan.md first for intended behavior, architecture, automated tests, and Manual Smoke Test
+- inspect it like a PR you did not author
+- verify the requested behavior and architecture against that contract
+- look for bugs, regressions, coupling, edge cases, and weak tests
+- add useful missing tests
+- fix implementation bugs rather than weakening legitimate tests
+- run the relevant tests and broader suite
+- confirm the documented Manual Smoke Test is still accurate and runnable
+- keep the relevant stage section in docs/plan.md synchronized with reality if commands or outputs changed (do not wipe earlier stages)
+- summarize findings and final test status
+
+Across all roles:
+- inspect before assuming
+- prefer existing project conventions
+- avoid unnecessary abstractions
+- keep changes small and reviewable
+- the single `docs/plan.md` (with Manual Smoke Tests) is part of the handoff contract between independent agents
+
+Make the skill available globally/user-level rather than only inside this repository.
+</pre>
+      </div>
+      <p class="portable">
+        Prefer a plain markdown file for Codex, Claude Code, or any agent?
+        Use <a href="./dev-cycle.md">dev-cycle.md</a> in this docs folder.
+      </p>
+      <p class="takeaway">
+        Prompt engineering gets you through one task. A skill turns the workflow into reusable engineering infrastructure.
+      </p>
+    </section>
+
+    <footer>
+      Teaching point: docs/plan.md (append-only living plan with Manual Smoke Tests), the repo, filesystem contracts,
+      and automated tests let independent agents collaborate without shared chat history.
+      Full <code>pytest</code> green before the next stage.
+      Local Streamlit board: <code>make prompts</code> → :8502.
+    </footer>
+  </main>
+
+  <script type="application/json" id="prompt-data">{"base": {"title": "Base plan — Pipeline diagram", "teach": "Warm up: one shared mental model before anyone opens an agent chat on code.", "plan": "We're about to build a small ML pipeline together. Before anyone touches application code, help me sketch the system so everyone in the room has the same mental model.\n\nThe product story is DashBite: food-delivery orders come in, and we want to predict whether an order will be late. Keep the raw fields short — order_id, timestamp, distance_km, prep_minutes, order_value, was_late.\n\nArchitecturally I want something modular and demo-friendly:\n- separate stages that feel like separate processes\n- they hand off through folders under data/, not by importing each other\n- training publishes versioned checkpoints; inference is a separate consumer of the newest checkpoint on disk\n- if training is down, inference should still work off whatever model is already there\n- a lightweight Model Pulse dashboard that reads existing outputs rather than owning pipeline logic\n- dashboards follow claim-first viz: active titles, human-readable labels, one story per chart — not a metrics dump\n- Model Pulse must include a time-series of sample volume over time (not just a single volume number)\n- no containers, Kafka, Spark, etc. — plain Python and files are enough\n\nOrchestration non-negotiable for this project:\n- everything we run in class or in smoke tests must be wired through a Makefile\n- prefer targets like `make install`, `make test`, `make simulator`, `make preprocess`, `make train`, `make infer`, `make dashboard`, `make run` / `make stop`, `make clean-data`\n- stages can still be implemented as `python -m pipeline.<stage>`, but the Makefile is the public interface the room uses\n- a single living plan lives at `docs/plan.md` — Architect owns it; stages are appended, never wholesale-overwritten\n- `docs/plan.md` Manual Smoke Tests should use `make …` commands, not ad-hoc python invocations, unless something truly has no make target yet (in which case add the target)\n\nSketch a Mermaid flowchart (left-to-right is fine) that captures that story, including the train write path and the infer read path. Then give me a few short bullets on the teaching beats we should keep repeating as we build — including that the Makefile is how we orchestrate the demo.\n\nCreate `docs/plan.md` (the one plan file for the whole demo) with that diagram and the short bullets under a clear header (e.g. `# DashBite — living plan` plus a `## Base — Pipeline diagram` section). Don't implement the pipeline yet — `docs/plan.md` only.\n"}, "wrap_up": {"title": "Wrap-up — Run the full stack", "teach": "After the stages are built: start every process as a persistent background job via Make.", "plan": "We've finished the stage-by-stage DashBite build. Help me run the full application so each stage stays up as a persistent background job.\n\nInspect the repository (especially the Makefile and pipeline entrypoints). Prefer Makefile orchestration — do not invent ad-hoc one-off shell recipes as the public interface.\n\nI want:\n- `make run` starts simulator, preprocess, train, infer, and the dashboard as durable background processes (survive the shell that launched them)\n- logs under `.logs/` and PIDs under `.logs/pids/` (or the project's existing convention)\n- `make stop` cleanly stops the whole stack\n- optional per-stage background targets are fine if they stay Make-friendly (e.g. document `make simulator` in foreground vs the background stack via `make run`)\n- default poll cadence is 15 seconds (`POLL_INTERVAL_SECONDS=15`); keep that as the classroom default\n- dashboard on :8501 (Model Pulse)\n\nAlso append a short section to docs/plan.md (do not overwrite earlier stages) with a Manual Smoke Test for the full stack:\n- Terminal: `make run` (and where to watch logs)\n- Watch for: new files under data/raw → data/features → data/predictions, and http://localhost:8501 updating\n- Stop: `make stop`\n\nImplement/fix whatever is needed so `make run` / `make stop` are reliable, then give me the exact commands to start and stop the demo.\n"}, "stages": [{"number": 0, "title": "Skeleton", "teach": "Smallest foundation: shared config, data folders, and a pytest gate.", "plan": "We're starting DashBite from an empty-ish repo and need the smallest foundation before anything interesting.\n\nInspect the repository and append this stage's implementation plan to docs/plan.md (create the file if missing; never overwrite earlier stages).\n\nInclude:\n- what we're changing\n- relevant files/interfaces\n- architectural constraints\n- automated test strategy\n- a manual smoke test I can run live from the terminal after implementation\n\nNon-negotiables for this demo:\n- config defaults include TRAIN_EVERY_N_EVENTS=2000 and BATCH_SIZE=50, overridable from the environment\n- path helpers that resolve data/raw, features, models, predictions, quality and can create them\n- pytest layout with unit / regression / integration markers\n\nFor the Manual Smoke Test, design something short and visible: load config (and maybe an env override), then show data dirs resolving/being created — e.g. a tiny `python -c` that prints load_config() and ensure_data_dirs().\n\nMaintain a single living plan at docs/plan.md (Architect-owned). Stages are appended; the file is never wholesale-overwritten.\n\nRules:\n- if docs/plan.md does not exist, create it with a short project header, then add this stage's section\n- if it already exists, APPEND this stage's section at the end — do not delete or rewrite earlier stages\n- only the Architect owns structural additions; Implementer/Reviewer may fix this stage's Manual Smoke Test wording if commands drifted\n\nAppend a concise section shaped like:\n\n## Stage N — <Title>\n\n### Goal\n...\n\n### Proposed changes\n- ...\n\n### Architecture / boundaries\n- ...\n\n### Automated tests\n- Unit: ...\n- Regression: ...\n- Integration: ...\n\n### Manual Smoke Test\n#### What we're proving\n...\n#### Terminal\n(pasteable commands; label Terminal 1 / 2 / 3 if needed)\n#### Watch for\n...\n#### Stop\nCtrl+C when a process should be stopped\n\nThe Manual Smoke Test is for a live classroom demo — visible logs, files on disk, readable CSV/model output. Prefer `make …` targets from the project Makefile as the commands the room runs. Do NOT use `pytest` as the smoke test; that's automated verification (`make test` is fine for the automated gate, not for the live smoke demo).\n\n\nDo not implement the feature yet. Only update docs/plan.md (append this stage), then stop.\n", "execute": "We're implementing Stage 0 of the DashBite pipeline.\n\nInspect the repository and read docs/plan.md first (focus on this stage's section; earlier stages are context). Treat it as the architecture and behavior handoff from the planning agent — including the Manual Smoke Test section.\n\nImplement the planned skeleton using the existing project patterns: pipeline package with shared config and path helpers, data/ folders, pytest markers. Config defaults should include TRAIN_EVERY_N_EVENTS=2000 and BATCH_SIZE=50, overridable from the environment.\n\nKeep the change scoped — no simulator or model yet. Add/update the relevant tests, and run them as you work.\n\nWhen implementation is complete, do not overwrite docs/plan.md or earlier stage sections. Make sure this stage's Manual Smoke Test still matches the actual commands and behavior. If details changed, update only that stage's Manual Smoke Test section so it is runnable.\n", "test": "Review the current Stage 0 skeleton as if this were a PR you did not author.\n\nRead docs/plan.md first (this stage's section) to understand the intended behavior, architecture, automated test strategy, and manual smoke test.\n\nVerify the implementation against that contract: shared config (TRAIN_EVERY_N_EVENTS / BATCH_SIZE), path helpers, data dirs, pytest layout.\n\nAdd or improve unit, regression, and integration tests where they provide meaningful coverage. Run the full pytest suite. If something fails, fix the underlying implementation problem rather than weakening a legitimate test.\n\nInspect whether the documented Manual Smoke Test is still accurate and runnable (you don't need to perform the live classroom demo). Keep this stage's section in docs/plan.md synchronized with reality if commands or outputs changed — never wipe earlier stages.\n\nFinish with a short summary of what you checked, anything you changed, and whether the full suite passes.\n"}, {"number": 1, "title": "Simulator", "teach": "Make the system feel alive: synthetic orders land under data/raw/.", "plan": "The project foundation should already be in place. Next I want the system to feel alive with synthetic DashBite orders.\n\nInspect the repository and append this stage's implementation plan to docs/plan.md (create the file if missing; never overwrite earlier stages).\n\nInclude:\n- what we're changing\n- relevant files/interfaces\n- architectural constraints\n- automated test strategy\n- a manual smoke test I can run live from the terminal after implementation\n\nNon-negotiables:\n- columns: order_id, timestamp, distance_km, prep_minutes, order_value, was_late\n- module runnable as `python -m pipeline.simulator`, exposed to the room via `make simulator`\n- live-feeling logs (“new orders arrived”); messy rows OK for later cleaning\n\nFor the Manual Smoke Test, make it visual: Terminal 1 runs `make simulator`; Terminal 2 does `ls -lh data/raw` and `head` on a generated CSV. Students should see “new orders arrived” and new files appearing. Include Ctrl+C to stop the loop.\n\nMaintain a single living plan at docs/plan.md (Architect-owned). Stages are appended; the file is never wholesale-overwritten.\n\nRules:\n- if docs/plan.md does not exist, create it with a short project header, then add this stage's section\n- if it already exists, APPEND this stage's section at the end — do not delete or rewrite earlier stages\n- only the Architect owns structural additions; Implementer/Reviewer may fix this stage's Manual Smoke Test wording if commands drifted\n\nAppend a concise section shaped like:\n\n## Stage N — <Title>\n\n### Goal\n...\n\n### Proposed changes\n- ...\n\n### Architecture / boundaries\n- ...\n\n### Automated tests\n- Unit: ...\n- Regression: ...\n- Integration: ...\n\n### Manual Smoke Test\n#### What we're proving\n...\n#### Terminal\n(pasteable commands; label Terminal 1 / 2 / 3 if needed)\n#### Watch for\n...\n#### Stop\nCtrl+C when a process should be stopped\n\nThe Manual Smoke Test is for a live classroom demo — visible logs, files on disk, readable CSV/model output. Prefer `make …` targets from the project Makefile as the commands the room runs. Do NOT use `pytest` as the smoke test; that's automated verification (`make test` is fine for the automated gate, not for the live smoke demo).\n\n\nDo not implement the feature yet. Only update docs/plan.md (append this stage), then stop.\n", "execute": "We're implementing Stage 1 of the DashBite pipeline (simulator / intake).\n\nInspect the repository and read docs/plan.md first (focus on this stage's section; earlier stages are context). Treat it as the architecture and behavior handoff from the planning agent — including the Manual Smoke Test.\n\nImplement the planned intake process: periodically write synthetic orders under data/raw/ with order_id, timestamp, distance_km, prep_minutes, order_value, was_late; live-feeling logs; shared config for batch size / poll interval; `python -m pipeline.simulator` under the hood with a `make simulator` target for the room.\n\nKeep this scoped to intake. Add/update relevant tests and run them as you work.\n\nWhen implementation is complete, do not overwrite docs/plan.md or earlier stage sections. Make sure this stage's Manual Smoke Test still matches the actual commands and behavior. If details changed, update only that stage's Manual Smoke Test section so it is runnable.\n", "test": "Review the current Stage 1 simulator as if this were a PR you did not author.\n\nRead docs/plan.md first (this stage's section) for intended behavior, architecture, automated tests, and the Manual Smoke Test.\n\nVerify intake writes the expected columns under data/raw/, uses shared config, and doesn't reach into features/models/predictions. Strengthen unit/regression/integration coverage (seeded golden fixture + one-tick write). Run the full suite.\n\nInspect whether the documented Manual Smoke Test is still accurate and runnable. Keep this stage's section in docs/plan.md synchronized if commands or outputs changed — never wipe earlier stages. Fix real bugs rather than softening asserts.\n\nSummarize findings, changes, and suite status.\n"}, {"number": 2, "title": "Preprocess", "teach": "Turn raw orders into a simple feature table under data/features/.", "plan": "Raw orders are already landing under data/raw/. Next we need a preprocessing stage that turns them into model-ready features.\n\nInspect the repository and append this stage's implementation plan to docs/plan.md (create the file if missing; never overwrite earlier stages).\n\nInclude:\n- what we're changing\n- relevant files/interfaces\n- architectural constraints\n- automated test strategy\n- a manual smoke test I can run live from the terminal after implementation\n\nNon-negotiables:\n- clean invalid rows; derive hour and is_peak; write under data/features/; keep was_late\n- stages stay independent and talk through data/\n\nFor the Manual Smoke Test, prefer separate terminals so the room sees Simulator → data/raw → Preprocess → data/features via `make simulator` and `make preprocess`. Then `ls` / `head` a feature CSV and call out hour / is_peak / was_late. Include Ctrl+C for loops.\n\nMaintain a single living plan at docs/plan.md (Architect-owned). Stages are appended; the file is never wholesale-overwritten.\n\nRules:\n- if docs/plan.md does not exist, create it with a short project header, then add this stage's section\n- if it already exists, APPEND this stage's section at the end — do not delete or rewrite earlier stages\n- only the Architect owns structural additions; Implementer/Reviewer may fix this stage's Manual Smoke Test wording if commands drifted\n\nAppend a concise section shaped like:\n\n## Stage N — <Title>\n\n### Goal\n...\n\n### Proposed changes\n- ...\n\n### Architecture / boundaries\n- ...\n\n### Automated tests\n- Unit: ...\n- Regression: ...\n- Integration: ...\n\n### Manual Smoke Test\n#### What we're proving\n...\n#### Terminal\n(pasteable commands; label Terminal 1 / 2 / 3 if needed)\n#### Watch for\n...\n#### Stop\nCtrl+C when a process should be stopped\n\nThe Manual Smoke Test is for a live classroom demo — visible logs, files on disk, readable CSV/model output. Prefer `make …` targets from the project Makefile as the commands the room runs. Do NOT use `pytest` as the smoke test; that's automated verification (`make test` is fine for the automated gate, not for the live smoke demo).\n\n\nDo not implement the feature yet. Only update docs/plan.md (append this stage), then stop.\n", "execute": "We're implementing Stage 2 of the DashBite pipeline.\n\nInspect the repository and read docs/plan.md first (focus on this stage's section; earlier stages are context). Treat it as the architecture and behavior handoff from the planning agent.\n\nImplement the planned preprocessing stage using the existing project patterns: clean obviously invalid rows, derive hour from timestamp and is_peak for lunch/dinner, write model-ready CSVs under data/features/, keep was_late. Communicate through data/ rather than importing another stage's runtime logic.\n\nKeep the change scoped, add/update the relevant tests, and run them as you work.\n\nWhen implementation is complete, do not overwrite docs/plan.md or earlier stage sections. Make sure this stage's Manual Smoke Test still matches the actual commands and behavior. If details changed, update only that stage's Manual Smoke Test section so it is runnable.\n", "test": "Review the current Stage 2 implementation as if this were a PR you did not author.\n\nRead docs/plan.md first (this stage's section) to understand the intended behavior, architecture, automated test strategy, and manual smoke test.\n\nVerify the implementation against that contract (invalid rows dropped; hour / is_peak / was_late; outputs under data/features/).\n\nRun the automated tests and inspect whether the documented Manual Smoke Test is still accurate and runnable.\n\nIf implementation bugs exist, fix them rather than weakening legitimate tests. Keep this stage's section in docs/plan.md synchronized with reality if commands or outputs changed — never wipe earlier stages.\n\nFinish with a short summary of findings, changes, and suite status.\n"}, {"number": 3, "title": "Train", "teach": "Model write path: retrain on enough labels, publish checkpoints only.", "plan": "Clean labeled features should already be showing up under data/features/. Next is the model's write path.\n\nInspect the repository and append this stage's implementation plan to docs/plan.md (create the file if missing; never overwrite earlier stages).\n\nInclude:\n- what we're changing\n- relevant files/interfaces\n- architectural constraints\n- automated test strategy\n- a manual smoke test I can run live from the terminal after implementation\n\nNon-negotiables:\n- LogisticRegression on distance_km + prep_minutes\n- versioned checkpoint under data/models/ (joblib OK) plus a small metrics sidecar\n- threshold from TRAIN_EVERY_N_EVENTS\n- train only publishes — never import, call, or wait on inference\n\nFor the Manual Smoke Test, make the classroom moment “Training published an artifact to disk.” Drive data with `make` targets, run `make train` (use a small TRAIN_EVERY_N_EVENTS if helpful for the demo), then `ls -lh data/models` and show the metrics sidecar. Do not involve inference yet.\n\nMaintain a single living plan at docs/plan.md (Architect-owned). Stages are appended; the file is never wholesale-overwritten.\n\nRules:\n- if docs/plan.md does not exist, create it with a short project header, then add this stage's section\n- if it already exists, APPEND this stage's section at the end — do not delete or rewrite earlier stages\n- only the Architect owns structural additions; Implementer/Reviewer may fix this stage's Manual Smoke Test wording if commands drifted\n\nAppend a concise section shaped like:\n\n## Stage N — <Title>\n\n### Goal\n...\n\n### Proposed changes\n- ...\n\n### Architecture / boundaries\n- ...\n\n### Automated tests\n- Unit: ...\n- Regression: ...\n- Integration: ...\n\n### Manual Smoke Test\n#### What we're proving\n...\n#### Terminal\n(pasteable commands; label Terminal 1 / 2 / 3 if needed)\n#### Watch for\n...\n#### Stop\nCtrl+C when a process should be stopped\n\nThe Manual Smoke Test is for a live classroom demo — visible logs, files on disk, readable CSV/model output. Prefer `make …` targets from the project Makefile as the commands the room runs. Do NOT use `pytest` as the smoke test; that's automated verification (`make test` is fine for the automated gate, not for the live smoke demo).\n\n\nDo not implement the feature yet. Only update docs/plan.md (append this stage), then stop.\n", "execute": "We're implementing Stage 3 of the DashBite pipeline (training / write path).\n\nInspect the repository and read docs/plan.md first (focus on this stage's section; earlier stages are context). Treat it as the architecture and behavior handoff from the planning agent — including the Manual Smoke Test.\n\nImplement training: retrain after TRAIN_EVERY_N_EVENTS new labeled examples; publish a versioned checkpoint under data/models/ with a small metrics sidecar; LogisticRegression on distance_km + prep_minutes. Training is only a publisher — must not import, call, or wait on inference.\n\nKeep the change scoped, add/update relevant tests, and run them as you work.\n\nWhen implementation is complete, do not overwrite docs/plan.md or earlier stage sections. Make sure this stage's Manual Smoke Test still matches the actual commands and behavior. If details changed, update only that stage's Manual Smoke Test section so it is runnable.\n", "test": "Review the current Stage 3 training implementation as if this were a PR you did not author.\n\nRead docs/plan.md first (this stage's section) for intended behavior, architecture, automated tests, and Manual Smoke Test.\n\nVerify retrain trigger, checkpoint + metrics under data/models/, LogisticRegression features, and hard isolation from inference. Strengthen coverage, run the full suite, fix real bugs.\n\nConfirm the documented Manual Smoke Test is still accurate and runnable (artifact-on-disk demo, not inference). Sync this stage's section in docs/plan.md if commands changed — never wipe earlier stages.\n\nSummarize findings, changes, and suite status.\n"}, {"number": 4, "title": "Infer", "teach": "Model read path: separate consumer of the newest checkpoint on disk.", "plan": "Training should already be publishing versioned checkpoints under data/models/, with features under data/features/. I want inference as a completely separate consumer of those artifacts.\n\nInspect the repository and append this stage's implementation plan to docs/plan.md (create the file if missing; never overwrite earlier stages).\n\nInclude:\n- what we're changing\n- relevant files/interfaces\n- architectural constraints\n- automated test strategy\n- a manual smoke test I can run live from the terminal after implementation\n\nNon-negotiables:\n- newest checkpoint on disk; predictions under data/predictions/ with order_id, late_probability, predicted_late, checkpoint_id\n- never import training or trigger retraining\n- wait cleanly if no checkpoint exists\n\nFor the Manual Smoke Test, this is the strongest classroom beat. Prefer separate terminals with `make` targets (`make train`, `make infer`, etc.). Show inference finding a checkpoint, scoring features, and writing predictions (`ls` / `head` under data/predictions/). Design it so the instructor can prove “Training does not need to be running”: create a checkpoint, stop training, keep/start inference, process another batch, show scoring still works from the artifact on disk.\n\nMaintain a single living plan at docs/plan.md (Architect-owned). Stages are appended; the file is never wholesale-overwritten.\n\nRules:\n- if docs/plan.md does not exist, create it with a short project header, then add this stage's section\n- if it already exists, APPEND this stage's section at the end — do not delete or rewrite earlier stages\n- only the Architect owns structural additions; Implementer/Reviewer may fix this stage's Manual Smoke Test wording if commands drifted\n\nAppend a concise section shaped like:\n\n## Stage N — <Title>\n\n### Goal\n...\n\n### Proposed changes\n- ...\n\n### Architecture / boundaries\n- ...\n\n### Automated tests\n- Unit: ...\n- Regression: ...\n- Integration: ...\n\n### Manual Smoke Test\n#### What we're proving\n...\n#### Terminal\n(pasteable commands; label Terminal 1 / 2 / 3 if needed)\n#### Watch for\n...\n#### Stop\nCtrl+C when a process should be stopped\n\nThe Manual Smoke Test is for a live classroom demo — visible logs, files on disk, readable CSV/model output. Prefer `make …` targets from the project Makefile as the commands the room runs. Do NOT use `pytest` as the smoke test; that's automated verification (`make test` is fine for the automated gate, not for the live smoke demo).\n\n\nDo not implement the feature yet. Only update docs/plan.md (append this stage), then stop.\n", "execute": "We're implementing Stage 4 of the DashBite pipeline (inference / read path).\n\nInspect the repository and read docs/plan.md first (focus on this stage's section; earlier stages are context). Treat it as the architecture and behavior handoff from the planning agent — including the Manual Smoke Test that proves train/infer isolation.\n\nBuild inference as a completely independent consumer: newest checkpoint on disk; score new feature rows; write order_id, late_probability, predicted_late, checkpoint_id under data/predictions/. If training isn't running, keep using the latest checkpoint; if none exists, wait cleanly. Do not import training or trigger retraining.\n\nKeep the change scoped, add/update relevant tests, and run them as you work.\n\nWhen implementation is complete, do not overwrite docs/plan.md or earlier stage sections. Make sure this stage's Manual Smoke Test still matches the actual commands and behavior. If details changed, update only that stage's Manual Smoke Test section so it is runnable.\n", "test": "Review the current inference stage as if this were a PR you did not author.\n\nRead docs/plan.md first (this stage's section) to understand the intended behavior, architecture, automated test strategy, and manual smoke test — especially the isolation demo.\n\nVerify:\n- newest checkpoint selection\n- clean behavior when no checkpoint exists\n- predictions under data/predictions/ with the expected fields\n- inference does not import or trigger training\n- inference can operate from an existing checkpoint when training isn't running\n\nAdd or improve unit, regression, and integration tests where meaningful. Run the full suite. Fix underlying bugs rather than weakening legitimate tests.\n\nInspect whether the documented Manual Smoke Test is still accurate and runnable. Keep this stage's section in docs/plan.md synchronized if commands or outputs changed — never wipe earlier stages.\n\nFinish with a short summary of what you checked, anything you changed, and whether the full suite passes.\n"}, {"number": 5, "title": "ML Dashboard", "teach": "Model Pulse: claim-first charts — volume over time, late-flag rate over time, ranked field failures.", "plan": "Features and predictions should already be flowing under data/features/ and data/predictions/. I'd like a lightweight Model Pulse view for someone watching whether the late-prediction system is healthy.\n\nInspect the repository and append this stage's implementation plan to docs/plan.md (create the file if missing; never overwrite earlier stages).\n\nInclude:\n- what we're changing\n- relevant files/interfaces\n- architectural constraints\n- automated test strategy\n- a manual smoke test I can run live from the terminal after implementation\n\nNon-negotiables:\n- pure helpers: sample volume, volume-over-time (timestamp buckets), score summary, and late-flag rate over time (join predictions to feature timestamps via order_id; % predicted_late per minute)\n- Model Pulse UI (sparse Streamlit; reads data/ only):\n  - ~3 KPIs max (e.g. samples, drop rate, late flag rate) — not a wall of metrics\n  - hero chart: orders over time (recent window, e.g. last 60 minutes) with an active title stating the finding\n  - model-output chart: step/line of % predicted_late by minute (recent window) with an active title like “flagging more/fewer late” — not a raw score histogram\n  - field failures: one horizontal bar chart sorted by count; no duplicate dataframe under it\n  - drop redundant throughput multi-series if it only retells drop rate\n- no business/ops KPIs in this dashboard (Model Pulse only)\n\nVisualization quality bar (non-negotiable for dashboard UI):\n- story first: each chart/section has one claim; titles state a finding (active voice), not variable names\n- reduce decoding: human-readable axis labels (e.g. `% flagged late`, plain field names); prefer horizontal text\n- do not make the audience do math: encode the decision quantity directly (drop rate, at-risk $, ranked failures)\n- data-ink: few KPIs (about 2–3); no duplicate chart+table for the same fact; no competing multi-series that retell a KPI\n- one Model Pulse page for ML health — keep business/ops KPIs out of this view\n\n\nFor the Manual Smoke Test, launch via `make dashboard`. Students should see active chart titles, a moving volume series, a late-flag % series, and ranked field failures. Keep terminal output showing Streamlit is reading pipeline artifacts.\n\nMaintain a single living plan at docs/plan.md (Architect-owned). Stages are appended; the file is never wholesale-overwritten.\n\nRules:\n- if docs/plan.md does not exist, create it with a short project header, then add this stage's section\n- if it already exists, APPEND this stage's section at the end — do not delete or rewrite earlier stages\n- only the Architect owns structural additions; Implementer/Reviewer may fix this stage's Manual Smoke Test wording if commands drifted\n\nAppend a concise section shaped like:\n\n## Stage N — <Title>\n\n### Goal\n...\n\n### Proposed changes\n- ...\n\n### Architecture / boundaries\n- ...\n\n### Automated tests\n- Unit: ...\n- Regression: ...\n- Integration: ...\n\n### Manual Smoke Test\n#### What we're proving\n...\n#### Terminal\n(pasteable commands; label Terminal 1 / 2 / 3 if needed)\n#### Watch for\n...\n#### Stop\nCtrl+C when a process should be stopped\n\nThe Manual Smoke Test is for a live classroom demo — visible logs, files on disk, readable CSV/model output. Prefer `make …` targets from the project Makefile as the commands the room runs. Do NOT use `pytest` as the smoke test; that's automated verification (`make test` is fine for the automated gate, not for the live smoke demo).\n\n\nDo not implement the feature yet. Only update docs/plan.md (append this stage), then stop.\n", "execute": "We're implementing Stage 5 of the DashBite pipeline (ML / Model Pulse dashboard).\n\nInspect the repository and read docs/plan.md first (focus on this stage's section; earlier stages are context). Treat it as the architecture and behavior handoff from the planning agent — including the Manual Smoke Test.\n\nBuild tested helpers (sample volume, volume-over-time, score summary, late-flag rate over time via order_id→timestamp join) and a claim-first Model Pulse page:\n- few KPIs; hero volume-over-time (recent window); % predicted_late over time (step/line); ranked horizontal field-failure bars; no duplicate tables; no ops KPIs\n- titles state findings; axes are human-readable; dashboards only read data/\n\nKeep the change scoped, add/update helper tests, and run them as you work.\n\nWhen implementation is complete, do not overwrite docs/plan.md or earlier stage sections. Make sure this stage's Manual Smoke Test still matches the actual commands and behavior. If details changed, update only that stage's Manual Smoke Test section so it is runnable.\n", "test": "Review the current Stage 5 ML dashboard as if this were a PR you did not author — final dashboard gate for the demo pipeline.\n\nRead docs/plan.md first (this stage's section) for intended behavior, architecture, automated tests, and Manual Smoke Test.\n\nVerify helpers and that Model Pulse meets the viz bar: active titles, recent volume-over-time, late-flag % over time (not a score histogram), ranked failures without a duplicate table, ~3 KPIs, UI only consumes artifacts. Strengthen helper tests, run the full suite, fix real issues.\n\nConfirm the documented Manual Smoke Test (Streamlit launch + what to watch for) is still accurate. Sync this stage's section in docs/plan.md if commands changed — never wipe earlier stages. A short README note on running stages separately is a nice extra if missing.\n\nFinish with a wrap-up of what you verified, what you changed, and whether the full suite passes.\n"}]}</script>
+  <script>
+    const data = JSON.parse(document.getElementById("prompt-data").textContent);
+    const board = document.getElementById("board");
+
+    function escapeHtml(s) {
+      return s
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function promptBlock(label, text) {
+      const id = "p-" + Math.random().toString(36).slice(2);
+      return `
+        <div class="caption">${label} — click Copy</div>
+        <div class="prompt-wrap">
+          <button class="copy-btn" type="button" data-copy="${id}">Copy</button>
+          <pre id="${id}">${escapeHtml(text)}</pre>
+        </div>`;
+    }
+
+    function stageDetails(title, teach, innerHtml, open, id) {
+      return `
+        <details class="stage" id="${id}" ${open ? "open" : ""}>
+          <summary>${escapeHtml(title)}</summary>
+          <div class="stage-body">
+            <p class="teach"><strong>Teach:</strong> ${escapeHtml(teach)}</p>
+            ${innerHtml}
+          </div>
+        </details>`;
+    }
+
+    function tabsFor(stage) {
+      const phases = [
+        ["plan", "Think it through", "Fresh architect chat — append stage to docs/plan.md (+ Manual Smoke Test)"],
+        ["execute", "Build it", "Fresh implementer chat — read docs/plan.md, then build"],
+        ["test", "Check it", "Fresh reviewer chat — verify code, tests & smoke-test docs"],
+      ];
+      const tabBtns = phases.map(([key, label], i) =>
+        `<button class="tab ${i === 0 ? "active" : ""}" type="button" data-tab="${key}">${label}</button>`
+      ).join("");
+      const panels = phases.map(([key, , caption], i) =>
+        `<div class="panel ${i === 0 ? "active" : ""}" data-panel="${key}">
+          ${promptBlock(caption, stage[key])}
+          ${key === "execute" ? '<div class="smoke-reminder"><strong>Live with the class:</strong> Build → run docs/plan.md smoke test manually → Check</div>' : ""}
+        </div>`
+      ).join("");
+      return `<div class="tabs">${tabBtns}</div>${panels}`;
+    }
+
+    function navEntries() {
+      const entries = [
+        { id: "stage-base", label: "0′ — " + data.base.title, meta: data.base.teach },
+      ];
+      for (const s of data.stages) {
+        entries.push({
+          id: "stage-" + s.number,
+          label: `Stage ${s.number} — ${s.title}`,
+          meta: s.teach,
+        });
+      }
+      if (data.wrap_up) {
+        entries.push({
+          id: "stage-wrap",
+          label: "6′ — " + data.wrap_up.title,
+          meta: data.wrap_up.teach,
+        });
+      }
+      entries.push({
+        id: "outro",
+        label: "Take the workflow with you",
+        meta: "dev-cycle skill",
+      });
+      return entries;
+    }
+
+    function renderNav() {
+      const root = document.getElementById("nav-links");
+      root.innerHTML = navEntries().map((e) =>
+        `<a href="#${e.id}" data-nav-target="${e.id}">${escapeHtml(e.label)}<span class="nav-meta">${escapeHtml(e.meta)}</span></a>`
+      ).join("");
+    }
+
+    function setNavOpen(open) {
+      document.body.classList.toggle("nav-open", open);
+      const burger = document.getElementById("nav-burger");
+      const backdrop = document.getElementById("nav-backdrop");
+      burger.setAttribute("aria-expanded", open ? "true" : "false");
+      burger.setAttribute("aria-label", open ? "Close stages menu" : "Open stages menu");
+      backdrop.hidden = !open;
+    }
+
+    function jumpToStage(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.tagName === "DETAILS") el.open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setNavOpen(false);
+    }
+
+    function render(openAll) {
+      const baseInner = promptBlock(
+        "Room warm-up — diagram & mental model",
+        data.base.plan
+      );
+      let html = stageDetails(
+        "0′ — " + data.base.title,
+        data.base.teach,
+        baseInner,
+        openAll,
+        "stage-base"
+      );
+      for (const s of data.stages) {
+        html += stageDetails(
+          `Stage ${s.number} — ${s.title}`,
+          s.teach,
+          tabsFor(s),
+          openAll,
+          "stage-" + s.number
+        );
+      }
+      if (data.wrap_up) {
+        html += stageDetails(
+          "6′ — " + data.wrap_up.title,
+          data.wrap_up.teach,
+          promptBlock("End of demo — paste into a fresh chat", data.wrap_up.plan),
+          openAll,
+          "stage-wrap"
+        );
+      }
+      board.innerHTML = html;
+      bindInteractions();
+    }
+
+    function bindInteractions() {
+      board.querySelectorAll(".tabs").forEach((tabBar) => {
+        const parent = tabBar.parentElement;
+        tabBar.querySelectorAll(".tab").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            tabBar.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+            parent.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+            btn.classList.add("active");
+            parent.querySelector(`[data-panel="${btn.dataset.tab}"]`).classList.add("active");
+          });
+        });
+      });
+    }
+
+    document.getElementById("nav-burger").addEventListener("click", () => {
+      setNavOpen(!document.body.classList.contains("nav-open"));
+    });
+    document.getElementById("nav-backdrop").addEventListener("click", () => setNavOpen(false));
+    document.getElementById("nav-links").addEventListener("click", (e) => {
+      const link = e.target.closest("[data-nav-target]");
+      if (!link) return;
+      e.preventDefault();
+      jumpToStage(link.dataset.navTarget);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setNavOpen(false);
+    });
+
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".copy-btn");
+      if (!btn) return;
+      const pre = document.getElementById(btn.dataset.copy);
+      if (!pre) return;
+      try {
+        await navigator.clipboard.writeText(pre.textContent);
+        btn.textContent = "Copied";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.textContent = "Copy";
+          btn.classList.remove("copied");
+        }, 1200);
+      } catch (err) {
+        btn.textContent = "Select text";
+      }
+    });
+
+    const expandAll = document.getElementById("expand-all");
+    expandAll.addEventListener("change", () => render(expandAll.checked));
+    renderNav();
+    render(true);
+    setNavOpen(false);
+  </script>
+</body>
+</html>
